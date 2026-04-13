@@ -1,0 +1,28 @@
+name: Test Lock Action
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to test locking"
+        required: false
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Lock Action
+        uses: ./
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          days-before-lock: 0
+          delete-branch: false

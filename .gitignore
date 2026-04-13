@@ -1,0 +1,10 @@
+.DS_Store
+*.log
+*.swp
+*.swo
+*~
+.env
+.venv
+node_modules/
+dist/
+build/

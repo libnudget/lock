@@ -1,0 +1,93 @@
+name: "Lock Merged PR"
+description: "Locks merged pull requests after a configurable delay"
+inputs:
+  token:
+    description: "GitHub token with PR write access"
+    required: true
+  days-before-lock:
+    description: "Days to wait before locking after merge"
+    required: false
+    default: "0"
+  lock-reason:
+    description: "Reason for locking the PR"
+    required: false
+    default: "resolved"
+  delete-branch:
+    description: "Delete the branch after merging"
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          action.yml
+          LICENSE
+          README.md
+        sparse-checkout-cone-mode: false
+
+    - name: Lock merged PR
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        DAYS_BEFORE_LOCK: ${{ inputs.days-before-lock }}
+        LOCK_REASON: ${{ inputs.lock-reason }}
+        DELETE_BRANCH: ${{ inputs.delete-branch }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+      run: |
+        #!/bin/bash
+        set -e
+        
+        DAYS="${DAYS_BEFORE_LOCK:-1}"
+        REASON="${LOCK_REASON:-resolved}"
+        DELETE_BRANCH="${DELETE_BRANCH:-true}"
+        
+        echo "Locking PR #$PR_NUMBER after ${DAYS} day(s)"
+        
+        # Calculate the delay in seconds
+        DELAY_SECONDS=$((DAYS * 86400))
+        
+        # For workflow_dispatch or immediate locking, skip the delay
+        if [[ -z "$GITHUB_EVENT_PATH" ]] || [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+          echo "Immediate lock requested"
+          DELAY_SECONDS=0
+        fi
+        
+        if [ "$DELAY_SECONDS" -gt 0 ]; then
+          echo "Waiting ${DAYS} day(s) before locking..."
+          sleep "$DELAY_SECONDS"
+        fi
+        
+        # Lock the PR using GitHub CLI (use issues API for locking)
+        gh api \
+          --method PUT \
+          -H "Accept: application/vnd.github+json" \
+          "/repos/$REPO/issues/$PR_NUMBER/lock" \
+          -f lock_reason="$REASON"
+        
+        echo "PR #$PR_NUMBER has been locked"
+        
+        # Delete the branch if enabled
+        if [[ "$DELETE_BRANCH" == "true" ]]; then
+          # Get the branch name from the PR
+          BRANCH=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/$REPO/pulls/$PR_NUMBER" | jq -r '.head.ref')
+          
+          if [[ -n "$BRANCH" ]] && [[ "$BRANCH" != "main" ]] && [[ "$BRANCH" != "master" ]]; then
+            echo "Deleting branch: $BRANCH"
+            if gh api \
+              --method DELETE \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/$REPO/git/refs/heads/$BRANCH" 2>/dev/null; then
+              echo "Branch $BRANCH has been deleted"
+            else
+              echo "Branch $BRANCH already deleted or does not exist"
+            fi
+          else
+            echo "Skipping branch deletion (protected or not found)"
+          fi
+        fi
