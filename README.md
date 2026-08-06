@@ -1,5 +1,7 @@
 # lock
 
+[![Release](https://img.shields.io/github/v/release/libnudget/lock?logo=github&label=latest)](https://github.com/libnudget/lock/releases)
+
 Reusable GitHub Action for locking merged pull requests after a configurable delay.
 
 ## Usage
