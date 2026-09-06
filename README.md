@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Coccinella-Labs/lock/main/.github/assets/thumbnail.png" alt="lock" width="100%">
+</p>
+
 # lock
 
 [![Release](https://img.shields.io/github/v/release/libnudget/lock?logo=github&label=latest)](https://github.com/libnudget/lock/releases)
